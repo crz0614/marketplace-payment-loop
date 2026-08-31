@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MarketLoop · Verified payment lifecycle</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;color:#17201b;background:#f3f0e8}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1080px;margin:auto;padding:40px 24px}header{display:flex;justify-content:space-between;align-items:center}.brand{font-weight:800;letter-spacing:-.04em}.pill{border:1px solid #b8c3ba;border-radius:999px;padding:8px 12px;color:#46604e}h1{font-size:clamp(42px,8vw,82px);line-height:.94;max-width:900px;margin:100px 0 28px;letter-spacing:-.065em}.lead{font-size:20px;max-width:700px;line-height:1.6;color:#4b5950}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:70px 0}.card{background:#fff;border:1px solid #d7ddd7;border-radius:22px;padding:24px;min-height:180px}.card b{display:block;font-size:28px;margin:30px 0 8px}.status{display:flex;gap:8px;align-items:center}.dot{width:9px;height:9px;border-radius:50%;background:#2e9b5b}.panel{background:#17201b;color:#fff;border-radius:28px;padding:32px;display:grid;grid-template-columns:1fr 1fr;gap:30px}.panel code{color:#a8efb9}.api{background:#263129;border-radius:14px;padding:18px;line-height:1.8;white-space:pre-line}@media(max-width:720px){.grid,.panel{grid-template-columns:1fr}h1{margin-top:64px}.grid{margin:44px 0}}
+</style></head><body><main class="wrap"><header><div class="brand">MarketLoop</div><div class="pill">EN · 中文</div></header>
+<h1>A marketplace payment loop you can audit.</h1>
+<p class="lead">Authentication, listings, search, orders, Stripe Checkout, signed webhooks, refunds and an admin boundary—implemented as a reproducible backend, not browser-only buttons.<br>可审计的交易闭环：鉴权、商品发布、搜索、订单、Stripe 支付、签名 Webhook、退款与管理边界。</p>
+<section class="grid"><article class="card"><div class="status"><i class="dot"></i>Persistent</div><b>SQLite WAL</b><span>Durable users, sessions, listings, orders and webhook deduplication.</span></article>
+<article class="card"><div class="status"><i class="dot"></i>Protected</div><b>PBKDF2 + Session</b><span>HttpOnly sessions, role checks and bounded request bodies.</span></article>
+<article class="card"><div class="status"><i class="dot"></i>Payment-ready</div><b>Stripe test mode</b><span>Checkout, verified events, idempotent state transitions and refunds.</span></article></section>
+<section class="panel"><div><h2>Operational evidence</h2><p>The public surface is deliberately read-only. Run the documented test flow locally or deploy with your own Stripe test credentials.</p><p>公开页面保持只读；按文档运行端到端测试，或配置自己的 Stripe 测试凭据。</p></div>
+<code class="api">GET /api/health
+GET /api/listings?q=
+POST /api/register
+POST /api/listings
+POST /api/orders
+POST /api/webhooks/stripe
+POST /api/admin/refunds</code></section></main></body></html>
