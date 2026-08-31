@@ -1,0 +1,10 @@
+services:
+  marketplace:
+    build: .
+    ports: ["3000:3000"]
+    env_file: .env
+    volumes: ["marketplace-data:/app/data"]
+    read_only: true
+    tmpfs: ["/tmp"]
+volumes:
+  marketplace-data:
