@@ -42,6 +42,14 @@ test('registration, listing, search, checkout, signed webhook and refund', async
   const refund=await call(base,'/api/admin/refunds',{method:'POST',headers:{cookie:adminCookie},body:JSON.stringify({order_id:checkout.body.order_id})});
   assert.equal(refund.response.status,202);
   assert.equal(refund.body.status,'succeeded');
+  const metrics=await fetch(base+'/metrics');
+  const metricsBody=await metrics.text();
+  assert.equal(metrics.status,200);
+  assert.match(metrics.headers.get('content-type'),/text\/plain/);
+  assert.match(metricsBody,/marketplace_users_total 3/);
+  assert.match(metricsBody,/marketplace_active_listings 1/);
+  assert.match(metricsBody,/marketplace_webhook_events_total 1/);
+  assert.match(metricsBody,/marketplace_orders\{status="paid"\} 1/);
 });
 
 test('rejects self-purchase and invalid webhook signatures', async t => {

@@ -19,6 +19,7 @@ Marketplace demos often stop at a visual checkout button. MarketLoop persists ev
 - Server-priced orders; clients cannot submit totals
 - Stripe Checkout Session creation through the official REST API
 - Timestamped HMAC webhook verification and event deduplication
+- Prometheus-compatible `/metrics` endpoint with aggregate users, listings, orders and durable webhook-event counts (no emails, IDs or payment data)
 - Admin-only full or partial refund requests
 - Automated HTTP end-to-end tests covering paid-order and refund flows
 - Docker/Compose deployment with a read-only filesystem and persistent volume
@@ -35,6 +36,8 @@ Forward Stripe test events with:
 
 Create seller and buyer accounts, publish a listing, then create an order. The order becomes paid only after a verified checkout event. Refund requests require the configured admin account; the signed refund webhook is durable accounting truth.
 
+Monitoring: scrape `GET /metrics` with Prometheus or any OpenMetrics-compatible collector. The endpoint intentionally exposes only aggregate counts and sends `Cache-Control: no-store`.
+
 创建卖家和买家账户，卖家发布服务，买家创建订单。只有收到并验证 Checkout 事件后，订单才会变为已付款。退款接口仅允许管理员调用，最终状态以签名 Webhook 为准。
 
 ## Failure and rollback · 失败与回滚
@@ -44,6 +47,7 @@ Create seller and buyer accounts, publish a listing, then create an order. The o
 - Invalid or expired signatures are rejected before database mutation.
 - Roll back by starting the previous container image against the same persistent volume.
 - A refund API response is not final accounting truth; the signed webhook closes the loop.
+- `/metrics` 仅暴露用户、上架服务、订单状态和已持久化 Webhook 事件的汇总数量，不包含邮箱、订单号或支付数据，可由 Prometheus 采集。
 
 ## Production boundary · 生产边界
 
