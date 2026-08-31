@@ -95,4 +95,14 @@ export class Store {
   orders(user) {
     return user.role === 'admin' ? this.db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 100').all() : this.db.prepare('SELECT * FROM orders WHERE buyer_id=? ORDER BY created_at DESC LIMIT 100').all(user.id);
   }
+  metrics() {
+    const scalar = sql => Number(this.db.prepare(sql).get().value);
+    const byStatus = this.db.prepare('SELECT status,COUNT(*) AS value FROM orders GROUP BY status').all();
+    return {
+      users: scalar('SELECT COUNT(*) AS value FROM users'),
+      activeListings: scalar("SELECT COUNT(*) AS value FROM listings WHERE status='active'"),
+      webhookEvents: scalar('SELECT COUNT(*) AS value FROM webhook_events'),
+      orders: Object.fromEntries(byStatus.map(row => [row.status, Number(row.value)]))
+    };
+  }
 }

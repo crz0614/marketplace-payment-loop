@@ -14,6 +14,23 @@ const readBody = async req => {
 };
 const cookieMap = req => Object.fromEntries((req.headers.cookie || '').split(';').filter(Boolean).map(x => x.trim().split('=').map(decodeURIComponent)));
 const sessionCookie = (token, expires) => 'session=' + encodeURIComponent(token) + '; Path=/; HttpOnly; SameSite=Lax; Expires=' + new Date(expires).toUTCString() + (process.env.NODE_ENV === 'production' ? '; Secure' : '');
+const prometheus = metrics => {
+  const lines = [
+    '# HELP marketplace_users_total Registered users.',
+    '# TYPE marketplace_users_total gauge',
+    `marketplace_users_total ${metrics.users}`,
+    '# HELP marketplace_active_listings Active service listings.',
+    '# TYPE marketplace_active_listings gauge',
+    `marketplace_active_listings ${metrics.activeListings}`,
+    '# HELP marketplace_webhook_events_total Durable Stripe events received.',
+    '# TYPE marketplace_webhook_events_total counter',
+    `marketplace_webhook_events_total ${metrics.webhookEvents}`,
+    '# HELP marketplace_orders Orders by current status.',
+    '# TYPE marketplace_orders gauge'
+  ];
+  for (const [status, value] of Object.entries(metrics.orders).sort()) lines.push(`marketplace_orders{status="${status}"} ${value}`);
+  return lines.join('\n') + '\n';
+};
 
 export function createServer({ store, stripe, origin = 'http://localhost:3000' }) {
   return http.createServer(async (req, res) => {
@@ -27,6 +44,10 @@ export function createServer({ store, stripe, origin = 'http://localhost:3000' }
         res.writeHead(200, {'content-type':'text/html; charset=utf-8'}); return res.end(page);
       }
       if (method === 'GET' && url.pathname === '/api/health') return send(res,200,{status:'ok',database:'sqlite',stripe:stripe.configured(),time:new Date().toISOString()});
+      if (method === 'GET' && url.pathname === '/metrics') {
+        res.writeHead(200, {'content-type':'text/plain; version=0.0.4; charset=utf-8','cache-control':'no-store'});
+        return res.end(prometheus(store.metrics()));
+      }
       if (method === 'GET' && url.pathname === '/api/listings') return send(res,200,{listings:store.listings(url.searchParams.get('q') || '')});
       if (method === 'POST' && url.pathname === '/api/webhooks/stripe') {
         const raw=await readBody(req), event=stripe.verify(raw,req.headers['stripe-signature']);
