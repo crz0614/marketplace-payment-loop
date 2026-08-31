@@ -22,6 +22,11 @@ test('registration, listing, search, checkout, signed webhook and refund', async
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   t.after(()=>{server.close();store.close()});
   const base='http://127.0.0.1:'+server.address().port;
+  const home=await fetch(base+'/'),homeBody=await home.text();
+  assert.equal(home.status,200);
+  assert.match(homeBody,/id="register"/);
+  assert.match(homeBody,/id="publish"/);
+  assert.match(homeBody,/id="refund"/);
   const seller=await call(base,'/api/register',{method:'POST',body:JSON.stringify({email:'seller@example.com',password:'seller-password'})});
   const sellerCookie=seller.response.headers.get('set-cookie').split(';')[0];
   const listing=await call(base,'/api/listings',{method:'POST',headers:{cookie:sellerCookie},body:JSON.stringify({title:'API integration',description:'Production webhook and CRM integration',price_cents:25000})});

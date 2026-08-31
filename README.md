@@ -21,6 +21,7 @@ Marketplace demos often stop at a visual checkout button. MarketLoop persists ev
 - Timestamped HMAC webhook verification and event deduplication
 - Prometheus-compatible `/metrics` endpoint with aggregate users, listings, orders and durable webhook-event counts (no emails, IDs or payment data)
 - Admin-only full or partial refund requests
+- Working browser interface for registration, login, service publishing, search, Checkout creation, order history and admin refunds
 - Automated HTTP end-to-end tests covering paid-order and refund flows
 - Docker/Compose deployment with a read-only filesystem and persistent volume
 
