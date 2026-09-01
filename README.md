@@ -42,7 +42,11 @@ The merged deployment PR records successful registration (201), authenticated se
 - Automated HTTP end-to-end tests covering paid-order and refund flows
 - Docker/Compose deployment with a read-only filesystem and persistent volume
 
-The following list describes the local Node runtime; do not assume hosted feature or security parity.\n\n以下清单描述本地 Node 运行形态，不能据此推断托管版本具有相同功能或安全机制。\n\n## Run locally · 本地运行
+The following list describes the local Node runtime; do not assume hosted feature or security parity.
+
+以下清单描述本地 Node 运行形态，不能据此推断托管版本具有相同功能或安全机制。
+
+## Run locally · 本地运行
 
     cp .env.example .env
     npm test
