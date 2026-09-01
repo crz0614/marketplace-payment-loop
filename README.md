@@ -1,8 +1,8 @@
 # MarketLoop · Marketplace Payment Loop
 
-A reproducible marketplace backend proving the complete commercial lifecycle: account authentication, service listings, search, orders, Stripe Checkout, signed/idempotent webhooks, refunds and an admin boundary.
+A marketplace backend implementing the following lifecycle, with verification limits documented below: account authentication, service listings, search, orders, Stripe Checkout, signed/idempotent webhooks, refunds and an admin boundary.
 
-一个可复现的 Marketplace 支付闭环：账户鉴权、服务发布、搜索、订单、Stripe Checkout、签名且幂等的 Webhook、退款和管理员权限边界。
+一个实现以下流程的 Marketplace 后端（验证边界见下文）：账户鉴权、服务发布、搜索、订单、Stripe Checkout、签名且幂等的 Webhook、退款和管理员权限边界。
 
 ## Business problem · 业务问题
 
@@ -10,7 +10,24 @@ Marketplace demos often stop at a visual checkout button. MarketLoop persists ev
 
 许多 Marketplace 演示只做到前端支付按钮。MarketLoop 在服务端持久化全部状态，并以 Stripe Webhook 而不是浏览器跳转作为付款事实来源。
 
-## Verified scope · 可验证范围
+## Deployment evidence · 部署与验证证据
+
+[Hosted service / 在线入口](https://hqxyjaepuaruiwdfvvqj.supabase.co/functions/v1/marketplace-payment-loop) · [Deployment PR #3 / 部署证据](https://github.com/crz0614/marketplace-payment-loop/pull/3)
+
+The merged deployment PR records successful registration (201), authenticated session lookup (200), listing creation (201), and search/readback (200), with disposable records removed afterwards. This is dated deployment evidence, not a guarantee of current uptime or a completed payment acceptance test.
+
+部署 PR 记录了注册、会话鉴权、服务发布和搜索回读成功，验证后已清理临时记录。这是部署时的证据，不代表持续可用性保证，也不代表支付验收完成。
+
+| Runtime / 运行形态 | Persistence and session / 持久化与会话 | Verification boundary / 验证边界 |
+| --- | --- | --- |
+| Hosted Supabase Edge | PostgreSQL; hashed bearer tokens, browser token in localStorage / PostgreSQL；服务端保存令牌哈希，浏览器 localStorage 保存 bearer token | Registration, auth, publishing and search recorded in PR #3 / PR #3 记录注册、鉴权、发布与搜索 |
+| Local Node + Docker | SQLite WAL; hashed tokens in HttpOnly, SameSite cookies / SQLite WAL；HttpOnly、SameSite Cookie 会话 | Automated HTTP tests use a Stripe transport double / HTTP 自动测试使用 Stripe 传输替身 |
+
+**Payment status: not end-to-end verified with Stripe.** Real test-mode Checkout, signed event settlement and refund verification remain outstanding. Configuration flags alone are not payment evidence. Never submit real card details or customer data to this evaluation deployment.
+
+**支付状态：尚未完成真实 Stripe 端到端验证。** 仍需实际测试支付、签名事件入账和退款验证；配置状态不等于支付成功证据。请勿在评估部署中提交真实银行卡或客户数据。
+
+## Local implementation scope · 本地实现范围
 
 - PBKDF2 password hashing and hashed server-side session tokens in HttpOnly, SameSite cookies
 - Same-origin enforcement for browser mutations; Stripe uses its independently signed webhook route
@@ -25,7 +42,7 @@ Marketplace demos often stop at a visual checkout button. MarketLoop persists ev
 - Automated HTTP end-to-end tests covering paid-order and refund flows
 - Docker/Compose deployment with a read-only filesystem and persistent volume
 
-## Run · 运行
+The following list describes the local Node runtime; do not assume hosted feature or security parity.\n\n以下清单描述本地 Node 运行形态，不能据此推断托管版本具有相同功能或安全机制。\n\n## Run locally · 本地运行
 
     cp .env.example .env
     npm test
