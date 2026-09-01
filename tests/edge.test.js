@@ -22,7 +22,7 @@ function setup(respond = () => ({ data: [], error: null })) {
     crypto, TextEncoder, TextDecoder, Uint8Array, Request, Response, URL, URLSearchParams, AbortSignal,
     console: { error() {} },
   });
-  return { calls, request: (path, value, headers = {}) => handler(new Request('https://example.test/marketplace-payment-loop' + path, value === undefined ? {} : { method:'POST', body:typeof value === 'string' ? value : JSON.stringify(value), headers:{'content-type':'application/json', ...headers} })) };
+  return { calls, handler, request: (path, value, headers = {}) => handler(new Request('https://example.test/marketplace-payment-loop' + path, value === undefined ? {headers} : { method:'POST', body:typeof value === 'string' ? value : JSON.stringify(value), headers:{'content-type':'application/json', ...headers} })) };
 }
 
 test('edge health probes database and reports failures without leaking errors', async () => {
@@ -48,6 +48,17 @@ test('served browser JavaScript parses successfully', async () => {
   const html = await (await setup().request('/')).text();
   const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   assert.doesNotThrow(() => new vm.Script(script));
+});
+
+test('CORS permits only the published frontend and rejects untrusted origins before database access', async () => {
+  const app = setup();
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/login',{method:'OPTIONS',headers:{origin:'https://crz0614.github.io'}}));
+  assert.equal(response.status,204);
+  assert.equal(response.headers.get('access-control-allow-origin'),'https://crz0614.github.io');
+  assert.equal((await app.request('/api/register',{}, {origin:'https://attacker.test'})).status,403);
+  assert.equal(app.calls.length,0);
+  const allowed = await app.request('/api/health',undefined,{origin:'https://crz0614.github.io'});
+  assert.equal(allowed.headers.get('access-control-allow-origin'),'https://crz0614.github.io');
 });
 
 test('edge rejects invalid JSON, arrays, null and over-size input before database access', async () => {
