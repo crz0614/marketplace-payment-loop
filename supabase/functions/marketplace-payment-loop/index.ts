@@ -92,7 +92,7 @@ const verifyStripe = async (raw: string, signature: string) => {
   return JSON.parse(raw)
 }
 
-Deno.serve(async (req: Request) => {
+const handleRequest = async (req: Request) => {
   try {
     const url = new URL(req.url), marker = '/marketplace-payment-loop', path = url.pathname.slice(url.pathname.indexOf(marker) + marker.length) || '/'
     if (req.method === 'GET' && path === '/') return new Response(page, { headers: { 'content-type':'text/html; charset=utf-8', 'content-security-policy':"default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'", 'x-content-type-options':'nosniff' } })
@@ -133,4 +133,26 @@ Deno.serve(async (req: Request) => {
     console.error('marketplace_request_failed')
     return fail('service_unavailable',503)
   }
+}
+
+// Static HTML is hosted on GitHub Pages: the gateway serves function HTML as text/plain.
+const frontendOrigin = 'https://crz0614.github.io'
+Deno.serve(async (req: Request) => {
+  const origin = req.headers.get('origin')
+  if (origin && origin !== frontendOrigin && origin !== new URL(req.url).origin) return fail('origin_not_allowed',403)
+  if (req.method === 'OPTIONS') {
+    if (origin !== frontendOrigin) return fail('origin_not_allowed',403)
+    return new Response(null,{status:204,headers:{
+      'Access-Control-Allow-Origin':frontendOrigin,
+      'Access-Control-Allow-Methods':'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers':'Authorization, Content-Type',
+      'Vary':'Origin',
+    }})
+  }
+  const response = await handleRequest(req)
+  if (origin === frontendOrigin) {
+    response.headers.set('Access-Control-Allow-Origin',frontendOrigin)
+    response.headers.set('Vary','Origin')
+  }
+  return response
 })
