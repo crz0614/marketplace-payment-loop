@@ -25,3 +25,11 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/authorization:'Bearer '\+token/);
   assert.match(html,/id="csvFile"/);
 });
+test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
+  assert.match(script,/file\.size>32768/);
+  assert.match(script,/csvRows\.length>100/);
+  assert.match(script,/new Set\(mapped\)\.size!==mapped\.length/);
+  for(const code of ['file_too_large','too_many_rows','duplicate_mapping','body_too_large']){
+    assert.match(script,new RegExp(code));
+  }
+});
