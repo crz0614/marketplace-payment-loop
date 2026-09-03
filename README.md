@@ -52,6 +52,16 @@ The following list describes the local Node runtime; do not assume hosted featur
     npm test
     npm start
 
+## Commerce Ops schema · 电商运营数据结构
+
+The applied Commerce Ops migrations are tracked as `20260903164749_commerce_ops_core.sql` and `20260903164817_commerce_ops_advisor_fixes.sql`. They reproduce the hosted PostgreSQL tables, seven-channel constraint, idempotent order key, atomic import function, indexes, RLS and service-role-only access. A fresh Supabase environment can therefore rebuild the order ledger from the repository instead of relying on dashboard-only SQL.
+
+已上线的电商运营迁移现已作为 `20260903164749_commerce_ops_core.sql` 和 `20260903164817_commerce_ops_advisor_fixes.sql` 纳入版本控制，包含三张 PostgreSQL 表、七渠道约束、订单幂等键、原子导入函数、索引、RLS 及仅限服务角色的访问边界。新 Supabase 环境可直接从仓库重建订单账本，不再依赖控制台中的未记录 SQL。
+
+Rollback is non-destructive: deploy the previous Edge Function, which does not call Commerce Ops routes, and leave the tables intact. Drop the function and tables only after an export and a verified zero-row check; dropping a shop cascades to its imports and order lines.
+
+回滚默认不删除数据：先恢复上一版 Edge Function，使其不再调用电商运营接口，同时保留表。只有完成导出并确认三张表均无业务记录后才能删除函数与表；删除店铺会级联删除对应导入记录和订单行。
+
 Forward Stripe test events with:
 
     stripe listen --forward-to localhost:3000/api/webhooks/stripe
