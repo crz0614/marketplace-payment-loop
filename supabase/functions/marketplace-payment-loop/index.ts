@@ -116,7 +116,20 @@ const handleRequest = async (req: Request) => {
       const token = await createSession(user.id); delete user.password_hash
       return json({ user, token })
     }
-    if (req.method === 'POST' && path === '/api/webhooks/stripe') { const raw=await req.text(),event=await verifyStripe(raw,req.headers.get('stripe-signature')||'');const {error}=await db.from('mpl_webhook_events').insert({id:event.id,event_type:event.type});if(error?.code==='23505')return json({received:true,applied:false});if(error)throw error;if(event.type==='checkout.session.completed')await db.from('mpl_orders').update({status:'paid',stripe_payment_intent:event.data.object.payment_intent}).eq('stripe_checkout_id',event.data.object.id).eq('status','pending');if(event.type==='charge.refunded')await db.from('mpl_orders').update({status:'refunded'}).eq('stripe_payment_intent',event.data.object.payment_intent);return json({received:true,applied:true}) }
+    if (req.method === 'POST' && path === '/api/webhooks/stripe') {
+      const raw=await req.text(),event=await verifyStripe(raw,req.headers.get('stripe-signature')||'')
+      if(event.type==='checkout.session.completed') {
+        const session=event.data.object
+        const {data,error}=await db.rpc('mpl_apply_checkout_event',{p_event_id:event.id,p_checkout_id:session.id,p_payment_intent:session.payment_intent,p_payment_status:session.payment_status,p_currency:session.currency,p_amount_total:session.amount_total,p_order_id:session.metadata?.order_id})
+        if(error)throw error
+        return json({received:true,applied:data})
+      }
+      const {error}=await db.from('mpl_webhook_events').insert({id:event.id,event_type:event.type})
+      if(error?.code==='23505')return json({received:true,applied:false})
+      if(error)throw error
+      if(event.type==='charge.refunded')await db.from('mpl_orders').update({status:'refunded'}).eq('stripe_payment_intent',event.data.object.payment_intent)
+      return json({received:true,applied:true})
+    }
     const user:any = await auth(req); if(!user)return fail('authentication_required',401)
     if (req.method === 'GET' && path === '/api/me') return json({user})
     if (req.method === 'POST' && path === '/api/listings') {
