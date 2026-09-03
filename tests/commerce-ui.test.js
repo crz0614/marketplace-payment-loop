@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+
+const html=readFileSync(new URL('../public/commerce.html',import.meta.url),'utf8');
+const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+
+test('commerce UI JavaScript parses and covers every requested channel',()=>{
+  assert.doesNotThrow(()=>new vm.Script(script));
+  for(const channel of ['amazon','taobao','pinduoduo','douyin','xiaohongshu']) assert.match(script,new RegExp(channel));
+});
+test('commerce UI provides persisted Chinese and English copy',()=>{
+  assert.match(script,/localStorage\.getItem\('vco_lang'\)/);
+  assert.match(script,/copy=\{zh:\{/);
+  assert.match(script,/,en:\{/);
+  assert.match(html,/id="language"/);
+});
+test('commerce UI connects all operational controls to the authenticated API',()=>{
+  for(const route of ['/api/commerce/shops','/api/commerce/imports','/api/commerce/orders']) assert.match(script,new RegExp(route));
+  assert.match(script,/authorization:'Bearer '\+token/);
+  assert.match(html,/id="csvFile"/);
+});
