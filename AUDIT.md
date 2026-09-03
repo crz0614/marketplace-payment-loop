@@ -12,6 +12,7 @@
 - Checkout event deduplication and order settlement now share one restricted database transaction; payment remains disabled until the remaining gates pass.
 - Registration and first-session creation now share one restricted database transaction, so a session failure cannot strand an unusable email address.
 - Listing search now passes user text as an RPC parameter instead of interpolating it into PostgREST filter syntax.
+- Signed-in users can revoke their current server-side session through the logout endpoint and browser control.
 
 修复生成页面的脚本转义、数据库健康检查、会话写入错误处理、请求体大小和类型校验、凭据与商品字段边界。内部错误不再原样返回。托管支付接口在写入数据库前拒绝请求，不会因为后来填入密钥就自动开启。
 
@@ -24,7 +25,7 @@ The legacy hosted payment implementation must not be enabled as-is:
 3. Partial refunds must not be marked fully refunded. Hosted admin refund functionality is not implemented.
 4. Checkout needs idempotency, recovery from provider/database partial failure and concurrent requests.
 5. Real Stripe test Checkout → signed webhook → refund acceptance must pass; mock tests are insufficient.
-6. Registration is now atomic; auth still needs durable rate limits, recovery, logout/revocation and a review of browser token storage/XSS risk.
+6. Registration is atomic and current-session logout/revocation is implemented; auth still needs durable rate limits, recovery and a review of browser token storage/XSS risk.
 7. Hosted search now uses a restricted parameterized database function; the UI still needs comprehensive browser/accessibility tests.
 
 旧版托管支付逻辑不得直接开启：必须补齐事务化幂等入账、金额/币种/支付状态校验、乱序事件、部分退款、管理员退款、并发结账恢复以及真实 Stripe 测试验收。鉴权仍需持久化限流、找回、注销撤销及令牌存储审查；搜索和页面测试仍需完善。本审计不代表整体生产验收完成。
