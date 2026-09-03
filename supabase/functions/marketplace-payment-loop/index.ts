@@ -104,9 +104,10 @@ const handleRequest = async (req: Request) => {
     if (req.method === 'GET' && path === '/api/listings') { const q=(url.searchParams.get('q')||'').slice(0,100); let query=db.from('mpl_listings').select('id,title,description,price_cents,currency,seller_id').eq('status','active').order('created_at',{ascending:false}).limit(50); if(q)query=query.or(`title.ilike.%${q.replace(/[%_,]/g,'')}%,description.ilike.%${q.replace(/[%_,]/g,'')}%`); const {data,error}=await query;if(error)throw error;return json({listings:data}) }
     if (req.method === 'POST' && path === '/api/register') {
       const { email, password } = credentials(await body(req))
-      const { data:user, error } = await db.from('mpl_users').insert({ email, password_hash:await passwordHash(password) }).select('id,email,role').single()
+      const token = crypto.randomUUID() + crypto.randomUUID()
+      const { data:user, error } = await db.rpc('mpl_register_user', { p_email:email, p_password_hash:await passwordHash(password), p_token_hash:await sha256(token), p_expires_at:new Date(Date.now() + 7*86400000).toISOString() }).single()
       if (error) return fail(error.code==='23505'?'email_exists':'registration_unavailable',error.code==='23505'?409:503)
-      return json({ user, token:await createSession(user.id) },201)
+      return json({ user, token },201)
     }
     if (req.method === 'POST' && path === '/api/login') {
       const { email, password } = credentials(await body(req))
