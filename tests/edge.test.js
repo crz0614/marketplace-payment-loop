@@ -123,3 +123,27 @@ test('listing price and text validation prevents writes', async () => {
   }
   assert.ok(app.calls.every(call => call.table === 'mpl_sessions'));
 });
+
+test('commerce import validates and normalizes rows before one atomic RPC', async () => {
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',email:'a@example.test',role:'member'}},error:null}
+    : call.rpc === 'vco_import_order_lines' ? {data:'import-id',error:null} : {data:null,error:null});
+  const response = await app.request('/api/commerce/imports',{shop_id:'shop-id',source_name:'amazon-export.csv',rows:[{
+    external_order_id:'AMZ-1',sku:'SKU-1',quantity:2,amount:'19.90',currency:'usd',status:'paid',occurred_at:'2026-09-03T00:00:00Z'
+  }]},{authorization:'Bearer test-token'});
+  assert.equal(response.status,201);
+  assert.deepEqual(await response.json(),{import_id:'import-id',row_count:1});
+  const call=app.calls.find(x=>x.rpc==='vco_import_order_lines');
+  assert.equal(call.args.p_owner,'user-id');
+  assert.equal(call.args.p_rows[0].amount_minor,1990);
+  assert.equal(call.args.p_rows[0].currency,'USD');
+});
+
+test('commerce import rejects malformed money before database import', async () => {
+  const app = setup(call => call.table === 'mpl_sessions' ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null} : {data:null,error:null});
+  const response = await app.request('/api/commerce/imports',{shop_id:'shop-id',source_name:'export.csv',rows:[{
+    external_order_id:'1',sku:'1',quantity:1,amount:'1.999',currency:'CNY',status:'paid',occurred_at:'2026-09-03'
+  }]},{authorization:'Bearer test-token'});
+  assert.equal(response.status,400);
+  assert.equal(app.calls.some(x=>x.rpc==='vco_import_order_lines'),false);
+});

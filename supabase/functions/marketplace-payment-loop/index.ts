@@ -7,6 +7,7 @@ const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false
 const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || ''
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || ''
 const enc = new TextEncoder()
+const commerceChannels = new Set(['amazon','taobao','pinduoduo','douyin','xiaohongshu','shopify','woocommerce'])
 // Deliberately closed until transactional settlement and real Stripe E2E pass.
 // Secrets alone must not enable the legacy, non-atomic payment handlers.
 const paymentsReady = false
@@ -59,6 +60,22 @@ const credentials = (x: Record<string, unknown>) => {
   const email = x.email.trim().toLowerCase(), password = x.password
   if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email) || password.length < 10 || password.length > 256) throw new HttpError('invalid_credentials')
   return { email, password }
+}
+const commerceOrder = (value: unknown) => {
+  if (!value || Array.isArray(value) || typeof value !== 'object') throw new HttpError('invalid_order')
+  const x = value as Record<string, unknown>
+  const required = (name: string, max = 255) => {
+    const v=x[name]; if(typeof v!=='string'||!v.trim()||v.length>max)throw new HttpError('invalid_'+name);return v.trim()
+  }
+  const quantity=Number(x.quantity), amount=typeof x.amount==='number'?String(x.amount):x.amount
+  if(!Number.isSafeInteger(quantity)||quantity<1)throw new HttpError('invalid_quantity')
+  if(typeof amount!=='string'||!/^\d+(\.\d{1,2})?$/.test(amount.trim()))throw new HttpError('invalid_amount')
+  const [whole,fraction='']=amount.trim().split('.'), amountMinor=Number(whole)*100+Number(fraction.padEnd(2,'0'))
+  if(!Number.isSafeInteger(amountMinor))throw new HttpError('invalid_amount')
+  const currency=required('currency',3).toUpperCase(), occurredAt=new Date(required('occurred_at',64))
+  if(!/^[A-Z]{3}$/.test(currency))throw new HttpError('invalid_currency')
+  if(Number.isNaN(occurredAt.valueOf()))throw new HttpError('invalid_occurred_at')
+  return {external_order_id:required('external_order_id'),sku:required('sku'),quantity,amount_minor:amountMinor,currency,status:required('status',80),occurred_at:occurredAt.toISOString()}
 }
 const createSession = async (userId: string) => {
   const token = crypto.randomUUID() + crypto.randomUUID()
@@ -134,6 +151,10 @@ const handleRequest = async (req: Request) => {
     const user:any = await auth(req); if(!user)return fail('authentication_required',401)
     if (req.method === 'GET' && path === '/api/me') return json({user})
     if (req.method === 'POST' && path === '/api/logout') { const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');const {error}=await db.from('mpl_sessions').delete().eq('token_hash',await sha256(token));if(error)throw new HttpError('logout_unavailable',503);return json({signed_out:true}) }
+    if (req.method === 'GET' && path === '/api/commerce/shops') { const {data,error}=await db.from('vco_shops').select('id,channel,name,connector_status,created_at').eq('owner_id',user.id).order('created_at');if(error)throw error;return json({shops:data}) }
+    if (req.method === 'POST' && path === '/api/commerce/shops') { const x=await body(req);if(typeof x.channel!=='string'||!commerceChannels.has(x.channel)||typeof x.name!=='string'||!x.name.trim()||x.name.length>120)return fail('invalid_shop');const {data,error}=await db.from('vco_shops').insert({owner_id:user.id,channel:x.channel,name:x.name.trim(),connector_status:'manual_import'}).select('id,channel,name,connector_status,created_at').single();if(error)return fail(error.code==='23505'?'shop_exists':'shop_unavailable',error.code==='23505'?409:503);return json({shop:data},201) }
+    if (req.method === 'POST' && path === '/api/commerce/imports') { const x=await body(req);if(typeof x.shop_id!=='string'||typeof x.source_name!=='string'||!x.source_name.trim()||x.source_name.length>200||!Array.isArray(x.rows)||x.rows.length<1||x.rows.length>100)return fail('invalid_import');const rows=x.rows.map(commerceOrder);const {data,error}=await db.rpc('vco_import_order_lines',{p_owner:user.id,p_shop:x.shop_id,p_source:x.source_name.trim(),p_rows:rows});if(error)return fail('import_failed',error.message.includes('shop_not_found')?404:400);return json({import_id:data,row_count:rows.length},201) }
+    if (req.method === 'GET' && path === '/api/commerce/orders') { const {data,error}=await db.from('vco_order_lines').select('id,shop_id,external_order_id,sku,quantity,amount_minor,currency,status,occurred_at,updated_at').eq('owner_id',user.id).order('occurred_at',{ascending:false}).limit(200);if(error)throw error;return json({orders:data}) }
     if (req.method === 'POST' && path === '/api/listings') {
       const x=await body(req)
       if (typeof x.title!=='string' || x.title.trim().length<3 || x.title.length>120 || typeof x.description!=='string' || x.description.trim().length<10 || x.description.length>5000 || !Number.isSafeInteger(x.price_cents) || x.price_cents<50 || x.price_cents>10000000) return fail('invalid_listing')
