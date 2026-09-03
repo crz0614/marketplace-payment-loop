@@ -14,9 +14,9 @@ Marketplace demos often stop at a visual checkout button. MarketLoop persists ev
 
 [Hosted service / 在线入口](https://hqxyjaepuaruiwdfvvqj.supabase.co/functions/v1/marketplace-payment-loop) · [Deployment PR #3 / 部署证据](https://github.com/crz0614/marketplace-payment-loop/pull/3)
 
-The merged deployment PR records successful registration (201), authenticated session lookup (200), listing creation (201), and search/readback (200), with disposable records removed afterwards. On 2026-09-03, migration `20260903130601_atomic_checkout_settlement` was applied to hosted PostgreSQL; a disposable transaction verified initial settlement, duplicate suppression and rollback without persisting test records, and Edge Function v4 was deployed. External HTTP probing was blocked by the verification environment, so current uptime and real payment acceptance are not claimed.
+The merged deployment PR records successful registration (201), authenticated session lookup (200), listing creation (201), and search/readback (200), with disposable records removed afterwards. On 2026-09-03, migration `20260903130601_atomic_checkout_settlement` was applied to hosted PostgreSQL; a disposable transaction verified initial settlement, duplicate suppression and rollback without persisting test records, and Edge Function v4 was deployed. Migration `20260903140721_atomic_registration` was also applied: a disposable transaction verified one user plus one session on success and zero orphan users after a forced session conflict. Edge Function v5 was deployed. External HTTP probing was blocked by the verification environment, so current uptime and real payment acceptance are not claimed.
 
-部署 PR 记录了注册、会话鉴权、服务发布和搜索回读成功，验证后已清理临时记录。2026-09-03 已将 `20260903130601_atomic_checkout_settlement` 应用于线上 PostgreSQL，并在可回滚事务中验证首次入账、重复抑制及失败回滚，未保留测试记录；Edge Function v4 同步完成部署。外部 HTTP 探测受验证环境网络策略阻止，因此不声明当前在线可用或真实支付验收完成。
+部署 PR 记录了注册、会话鉴权、服务发布和搜索回读成功，验证后已清理临时记录。2026-09-03 已将 `20260903130601_atomic_checkout_settlement` 应用于线上 PostgreSQL，并在可回滚事务中验证首次入账、重复抑制及失败回滚，未保留测试记录；Edge Function v4 同步完成部署。同时应用 `20260903140721_atomic_registration`：可回滚事务验证正常路径只创建一个用户和一个会话，强制会话冲突后遗留用户为零；Edge Function v5 已部署。外部 HTTP 探测受验证环境网络策略阻止，因此不声明当前在线可用或真实支付验收完成。
 
 | Runtime / 运行形态 | Persistence and session / 持久化与会话 | Verification boundary / 验证边界 |
 | --- | --- | --- |
