@@ -17,7 +17,7 @@
 
 The legacy hosted payment implementation must not be enabled as-is:
 
-1. Apply and integration-test the atomic checkout-settlement migration against hosted PostgreSQL.
+1. **Completed 2026-09-03:** applied migration `20260903130601_atomic_checkout_settlement` to hosted PostgreSQL and verified success, duplicate suppression and mismatch rollback inside a disposable transaction.
 2. Settlement validates paid status, currency, amount and checkout/order identity; delayed and reordered event coverage remains outstanding.
 3. Partial refunds must not be marked fully refunded. Hosted admin refund functionality is not implemented.
 4. Checkout needs idempotency, recovery from provider/database partial failure and concurrent requests.
@@ -29,12 +29,12 @@ The legacy hosted payment implementation must not be enabled as-is:
 
 ## Verify / 验证
 
-Run `node --test` on Node 24+. `tests/edge.test.js` executes the real Edge handler with a database transport double; it does not claim remote PostgreSQL or Stripe E2E coverage.
+Run `node --test` on Node 24+. `tests/edge.test.js` executes the real Edge handler with a database transport double. On 2026-09-03, the hosted PostgreSQL function was exercised in a disposable transaction: the first settlement returned true, an identical event returned false, and the surrounding transaction rolled back all test records. Edge Function v4 was deployed from the merged source. External HTTP health verification was blocked by the verification environment, so current uptime is not claimed. Real Stripe E2E coverage remains outstanding.
 
-使用 Node 24+ 执行 `node --test`。Edge 测试执行真实处理函数，但数据库传输为替身；这不等同远程数据库或 Stripe 端到端测试。
+使用 Node 24+ 执行 `node --test`。Edge 测试执行真实处理函数，但数据库传输为替身。2026-09-03 已在线上 PostgreSQL 的可回滚事务中验证首次入账返回 true、重复事件返回 false，并回滚全部测试记录；Edge Function v4 已从合并代码部署。外部 HTTP 探测受验证环境网络策略阻止，因此不声明当前在线可用；真实 Stripe 端到端仍待完成。
 
 ## Rollback / 回滚
 
-No schema is changed. Re-deploy the previous committed function only if necessary; it restores the known script and error-handling defects. Keep Stripe secrets absent and do not activate the old payment code. Prefer rolling forward with a fix. Do not remove payment safety gates without completing the release checklist.
+The hosted migration is additive and payment routes remain hard-disabled. If the function deployment regresses, redeploy the previous committed function while keeping Stripe secrets absent. Do not drop the settlement function or migration history during an incident; prefer a forward corrective migration. Do not remove payment safety gates without completing the release checklist.
 
-本次无数据库迁移。必要时可重部署此前提交，但会恢复已知页面及错误处理缺陷，因此优先向前修复。回滚时必须保持 Stripe 密钥未配置，不能开启旧支付代码；发布清单完成前不得移除支付保护。
+线上迁移为增量变更，支付路由仍强制关闭。若函数部署回归，可在保持 Stripe 密钥未配置的前提下重部署上一已知版本；事故处理中不要删除入账函数或迁移历史，应以前向修复迁移处理。发布清单完成前不得移除支付保护。
