@@ -32,7 +32,7 @@ The merged deployment PR records successful registration (201), authenticated se
 - PBKDF2 password hashing and hashed server-side session tokens in HttpOnly, SameSite cookies
 - Same-origin enforcement for browser mutations; Stripe uses its independently signed webhook route
 - Persistent SQLite WAL database with foreign keys and transactions
-- Authenticated listing creation plus public bounded search
+- Authenticated listing creation, current-session logout/revocation and public bounded search
 - Server-priced orders; clients cannot submit totals
 - Stripe Checkout Session creation through the official REST API
 - Timestamped HMAC webhook verification and event deduplication
