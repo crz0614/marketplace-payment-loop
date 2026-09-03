@@ -9,14 +9,17 @@ const source = stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/
 function setup(respond = () => ({ data: [], error: null })) {
   let handler;
   const calls = [];
-  const db = { from(table) {
-    const call = { table, operations: [] }; calls.push(call);
+  const query = call => {
     const query = new Proxy({}, { get(_, key) {
       if (key === 'then') return (resolve, reject) => Promise.resolve(respond(call)).then(resolve, reject);
       return (...args) => { call.operations.push([key, ...args]); return query; };
     }});
     return query;
-  }};
+  };
+  const db = {
+    from(table) { const call = { table, operations: [] }; calls.push(call); return query(call); },
+    rpc(name, args) { const call = { rpc:name, args, operations: [] }; calls.push(call); return query(call); },
+  };
   vm.runInNewContext(source, {
     createClient: () => db, Deno: { env: { get: () => '' }, serve: fn => { handler = fn; } },
     crypto, TextEncoder, TextDecoder, Uint8Array, Request, Response, URL, URLSearchParams, AbortSignal,
@@ -70,11 +73,16 @@ test('edge rejects invalid JSON, arrays, null and over-size input before databas
   assert.equal(app.calls.length,0);
 });
 
-test('registration never returns a token when session persistence fails', async () => {
-  const app = setup(call => call.table === 'mpl_users' ? { data:{id:'user-id',email:'a@example.test',role:'user'},error:null } : {error:{message:'session failure'}});
+test('registration creates the user and first session in one database transaction', async () => {
+  const app = setup(call => call.rpc === 'mpl_register_user' ? { data:{id:'user-id',email:'a@example.test',role:'member'},error:null } : {error:{message:'unexpected call'}});
   const response = await app.request('/api/register',{email:'a@example.test',password:'long-enough-password'});
-  assert.equal(response.status,503);
-  assert.deepEqual(await response.json(),{error:'session_unavailable'});
+  assert.equal(response.status,201);
+  assert.equal((await response.json()).user.id,'user-id');
+  assert.equal(app.calls.length,1);
+  assert.equal(app.calls[0].rpc,'mpl_register_user');
+  assert.equal(app.calls[0].args.p_email,'a@example.test');
+  assert.equal(app.calls[0].args.p_token_hash.length,64);
+  assert.deepEqual(app.calls[0].operations,[['single']]);
 });
 
 test('session database outage is not misreported as invalid credentials', async () => {
