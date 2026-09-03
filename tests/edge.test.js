@@ -147,3 +147,16 @@ test('commerce import rejects malformed money before database import', async () 
   assert.equal(response.status,400);
   assert.equal(app.calls.some(x=>x.rpc==='vco_import_order_lines'),false);
 });
+
+test('commerce import history is owner-scoped and bounded', async () => {
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:[{id:'import-id',source_name:'amazon.csv',row_count:1}],error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/imports',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).imports[0].id,'import-id');
+  const call=app.calls.find(x=>x.table==='vco_imports');
+  assert.deepEqual(call.operations.map(x=>x[0]),['select','eq','order','limit']);
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[3],['limit',100]);
+});
