@@ -30,9 +30,9 @@ The legacy hosted payment implementation must not be enabled as-is:
 
 ## Verify / 验证
 
-Run `node --test` on Node 24+. `tests/edge.test.js` executes the real Edge handler with a database transport double. On 2026-09-03, the hosted PostgreSQL function was exercised in a disposable transaction: the first settlement returned true, an identical event returned false, and the surrounding transaction rolled back all test records. Edge Function v4 was deployed from the merged source. External HTTP health verification was blocked by the verification environment, so current uptime is not claimed. Real Stripe E2E coverage remains outstanding.
+Run `node --test` on Node 24+. `tests/edge.test.js` executes the real Edge handler with a database transport double. On 2026-09-03, the hosted PostgreSQL function was exercised in a disposable transaction: the first settlement returned true, an identical event returned false, and the surrounding transaction rolled back all test records. Edge Function v4 was deployed from the merged source. Migration `20260903140721_atomic_registration` was then applied; one disposable transaction created exactly one user and one session, while a forced duplicate-session failure left zero orphan users. Edge Function v5 was deployed. External HTTP health verification was blocked by the verification environment, so current uptime is not claimed. Real Stripe E2E coverage remains outstanding.
 
-使用 Node 24+ 执行 `node --test`。Edge 测试执行真实处理函数，但数据库传输为替身。2026-09-03 已在线上 PostgreSQL 的可回滚事务中验证首次入账返回 true、重复事件返回 false，并回滚全部测试记录；Edge Function v4 已从合并代码部署。外部 HTTP 探测受验证环境网络策略阻止，因此不声明当前在线可用；真实 Stripe 端到端仍待完成。
+使用 Node 24+ 执行 `node --test`。Edge 测试执行真实处理函数，但数据库传输为替身。2026-09-03 已在线上 PostgreSQL 的可回滚事务中验证首次入账返回 true、重复事件返回 false，并回滚全部测试记录；Edge Function v4 已从合并代码部署。随后应用 `20260903140721_atomic_registration`：可回滚事务验证正常路径只创建一个用户和一个会话，强制会话冲突后遗留用户为零；Edge Function v5 已部署。外部 HTTP 探测受验证环境网络策略阻止，因此不声明当前在线可用；真实 Stripe 端到端仍待完成。
 
 ## Rollback / 回滚
 
