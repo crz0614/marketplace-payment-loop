@@ -1,0 +1,1 @@
+{"name":"omnichannel-commerce-ops","private":true,"type":"module","scripts":{"test":"node --test","check":"node --check src/domain.mjs && node --check public/app.js"}}
