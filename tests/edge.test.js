@@ -85,6 +85,17 @@ test('registration creates the user and first session in one database transactio
   assert.deepEqual(app.calls[0].operations,[['single']]);
 });
 
+test('listing search passes filter syntax as data to one restricted RPC', async () => {
+  const app = setup();
+  const q = 'api),status.eq.paused_%\\"';
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/listings?q=' + encodeURIComponent(q)));
+  assert.equal(response.status,200);
+  assert.equal(app.calls.length,1);
+  assert.equal(app.calls[0].rpc,'mpl_search_listings');
+  assert.equal(app.calls[0].args.p_query,q);
+  assert.deepEqual(app.calls[0].operations,[]);
+});
+
 test('session database outage is not misreported as invalid credentials', async () => {
   const app = setup(() => ({error:{message:'secret query'}}));
   const response = await app.request('/api/listings',{title:'Valid title',description:'Valid description',price_cents:100},{authorization:'Bearer test-token'});

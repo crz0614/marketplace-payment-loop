@@ -101,7 +101,7 @@ const handleRequest = async (req: Request) => {
       return json({ status:error?'degraded':'ok', database:'postgresql', database_ready:!error, runtime:'supabase-edge', stripe:paymentsReady, stripe_keys_configured:stripeKey.startsWith('sk_test_') && webhookSecret.startsWith('whsec_'), payments_status:'disabled_pending_settlement_audit', time:new Date().toISOString() }, error?503:200)
     }
     if (!paymentsReady && req.method === 'POST' && (path === '/api/orders' || path === '/api/webhooks/stripe' || path.startsWith('/api/refund'))) return fail('payments_disabled_pending_verification',503)
-    if (req.method === 'GET' && path === '/api/listings') { const q=(url.searchParams.get('q')||'').slice(0,100); let query=db.from('mpl_listings').select('id,title,description,price_cents,currency,seller_id').eq('status','active').order('created_at',{ascending:false}).limit(50); if(q)query=query.or(`title.ilike.%${q.replace(/[%_,]/g,'')}%,description.ilike.%${q.replace(/[%_,]/g,'')}%`); const {data,error}=await query;if(error)throw error;return json({listings:data}) }
+    if (req.method === 'GET' && path === '/api/listings') { const q=(url.searchParams.get('q')||'').slice(0,100);const {data,error}=await db.rpc('mpl_search_listings',{p_query:q});if(error)throw error;return json({listings:data}) }
     if (req.method === 'POST' && path === '/api/register') {
       const { email, password } = credentials(await body(req))
       const token = crypto.randomUUID() + crypto.randomUUID()
