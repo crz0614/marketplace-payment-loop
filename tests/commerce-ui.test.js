@@ -15,6 +15,10 @@ test('commerce UI provides persisted Chinese and English copy',()=>{
   assert.match(script,/copy=\{zh:\{/);
   assert.match(script,/,en:\{/);
   assert.match(html,/id="language"/);
+  assert.match(script,/orderId:'订单号'/);
+  assert.match(script,/orderId:'Order'/);
+  assert.match(script,/errorText=code/);
+  assert.match(script,/authentication_required:'请先登录。'/);
 });
 test('commerce UI connects all operational controls to the authenticated API',()=>{
   for(const route of ['/api/commerce/shops','/api/commerce/imports','/api/commerce/orders']) assert.match(script,new RegExp(route));
