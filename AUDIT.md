@@ -9,6 +9,7 @@
 - Credentials and listing text/prices have explicit type and size limits.
 - Internal database/provider errors are not returned to visitors.
 - Hosted payment routes return 503 before database writes, even if keys are later configured.
+- Checkout event deduplication and order settlement now share one restricted database transaction; payment remains disabled until the remaining gates pass.
 
 修复生成页面的脚本转义、数据库健康检查、会话写入错误处理、请求体大小和类型校验、凭据与商品字段边界。内部错误不再原样返回。托管支付接口在写入数据库前拒绝请求，不会因为后来填入密钥就自动开启。
 
@@ -16,8 +17,8 @@
 
 The legacy hosted payment implementation must not be enabled as-is:
 
-1. Event deduplication and order settlement must commit in one database transaction.
-2. Settlement must validate paid status, currency, amount and order ownership; cover delayed and reordered events.
+1. Apply and integration-test the atomic checkout-settlement migration against hosted PostgreSQL.
+2. Settlement validates paid status, currency, amount and checkout/order identity; delayed and reordered event coverage remains outstanding.
 3. Partial refunds must not be marked fully refunded. Hosted admin refund functionality is not implemented.
 4. Checkout needs idempotency, recovery from provider/database partial failure and concurrent requests.
 5. Real Stripe test Checkout → signed webhook → refund acceptance must pass; mock tests are insufficient.
