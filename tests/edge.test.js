@@ -96,6 +96,19 @@ test('listing search passes filter syntax as data to one restricted RPC', async 
   assert.deepEqual(app.calls[0].operations,[]);
 });
 
+test('logout revokes the presented session before reporting success', async () => {
+  const app = setup(call => call.table === 'mpl_sessions' && call.operations[0]?.[0] === 'select'
+    ? {data:{mpl_users:{id:'user-id',email:'a@example.test',role:'member'}},error:null}
+    : {data:null,error:null});
+  const response = await app.request('/api/logout',{}, {authorization:'Bearer test-token'});
+  assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),{signed_out:true});
+  assert.equal(app.calls.length,2);
+  assert.deepEqual(app.calls[1].operations.map(x => x[0]),['delete','eq']);
+  assert.equal(app.calls[1].operations[1][1],'token_hash');
+  assert.equal(app.calls[1].operations[1][2].length,64);
+});
+
 test('session database outage is not misreported as invalid credentials', async () => {
   const app = setup(() => ({error:{message:'secret query'}}));
   const response = await app.request('/api/listings',{title:'Valid title',description:'Valid description',price_cents:100},{authorization:'Bearer test-token'});
