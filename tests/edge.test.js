@@ -157,6 +157,7 @@ test('commerce import history is owner-scoped and bounded', async () => {
   assert.equal((await response.json()).imports[0].id,'import-id');
   const call=app.calls.find(x=>x.table==='vco_imports');
   assert.deepEqual(call.operations.map(x=>x[0]),['select','eq','order','limit']);
+  assert.equal(call.operations[0][1],'id,shop_id,source_name,row_count,created_at,shop:vco_shops(name,channel)');
   assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
   assert.deepEqual(call.operations[3],['limit',100]);
 });
