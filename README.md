@@ -56,11 +56,11 @@ The following list describes the local Node runtime; do not assume hosted featur
 
 The applied Commerce Ops migrations are tracked as `20260903164749_commerce_ops_core.sql` and `20260903164817_commerce_ops_advisor_fixes.sql`. They reproduce the hosted PostgreSQL tables, seven-channel constraint, idempotent order key, atomic import function, indexes, RLS and service-role-only access. A fresh Supabase environment can therefore rebuild the order ledger from the repository instead of relying on dashboard-only SQL.
 
-The authenticated Commerce Ops API and bilingual console also expose the latest 100 import runs and 200 order lines for the current owner. Both retain shop and channel context; the ledger can be filtered by shop and original order status, making repeated uploads, pending work and reconciliation traceable without exposing another operator's records.
+The authenticated Commerce Ops API and bilingual console also expose the latest 100 import runs and 200 order lines for the current owner. Both retain shop and channel context; the ledger can be filtered by shop, original order status and an inclusive UTC date range, making repeated uploads, pending work and reconciliation traceable without exposing another operator's records.
 
 已上线的电商运营迁移现已作为 `20260903164749_commerce_ops_core.sql` 和 `20260903164817_commerce_ops_advisor_fixes.sql` 纳入版本控制，包含三张 PostgreSQL 表、七渠道约束、订单幂等键、原子导入函数、索引、RLS 及仅限服务角色的访问边界。新 Supabase 环境可直接从仓库重建订单账本，不再依赖控制台中的未记录 SQL。
 
-鉴权后的电商运营 API 与双语控制台还会展示当前账户最近 100 次导入记录，以及最近 200 条订单；两者都标明所属店铺与渠道，订单还可通过鉴权 API 按店铺和原始订单状态筛选，便于追踪重复上传、待处理订单与跨平台对账，同时不会暴露其他运营者的记录。
+鉴权后的电商运营 API 与双语控制台还会展示当前账户最近 100 次导入记录，以及最近 200 条订单；两者都标明所属店铺与渠道，订单还可通过鉴权 API 按店铺、原始订单状态和包含首尾日期的 UTC 日期范围筛选，便于追踪重复上传、待处理订单与跨平台对账，同时不会暴露其他运营者的记录。
 
 Rollback is non-destructive: deploy the previous Edge Function, which does not call Commerce Ops routes, and leave the tables intact. Drop the function and tables only after an export and a verified zero-row check; dropping a shop cascades to its imports and order lines.
 

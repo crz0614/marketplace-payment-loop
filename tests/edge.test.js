@@ -199,3 +199,18 @@ test('commerce order ledger validates and applies a status filter after ownershi
   assert.deepEqual(call.operations[4],['eq','status','awaiting_fulfillment']);
   assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?status='+encodeURIComponent('x'.repeat(81)),{headers:{authorization:'Bearer test-token'}}))).status,400);
 });
+
+test('commerce order ledger validates and applies an inclusive UTC date range after ownership', async () => {
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:[],error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?from=2026-09-03&to=2026-09-03',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  const call=app.calls.find(x=>x.table==='vco_order_lines');
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[4],['gte','occurred_at','2026-09-03T00:00:00.000Z']);
+  assert.deepEqual(call.operations[5],['lt','occurred_at','2026-09-04T00:00:00.000Z']);
+  for(const query of ['from=2026-02-29','from=2026-99-99','to=not-a-date','from=2026-09-04&to=2026-09-03']) {
+    assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?'+query,{headers:{authorization:'Bearer test-token'}}))).status,400);
+  }
+});
