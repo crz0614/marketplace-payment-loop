@@ -170,7 +170,7 @@ test('commerce order ledger includes shop context without widening ownership', a
   assert.equal(response.status,200);
   assert.equal((await response.json()).orders[0].shop.channel,'amazon');
   const call=app.calls.find(x=>x.table==='vco_order_lines');
-  assert.equal(call.operations[0][1],'id,shop_id,external_order_id,sku,quantity,amount_minor,currency,status,occurred_at,updated_at,shop:vco_shops(name,channel)');
+  assert.equal(call.operations[0][1],'id,shop_id,external_order_id,sku,quantity,amount_minor,currency,status,canonical_status,occurred_at,updated_at,shop:vco_shops(name,channel)');
   assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
   assert.deepEqual(call.operations[3],['limit',200]);
 });
@@ -200,6 +200,18 @@ test('commerce order ledger validates and applies a status filter after ownershi
   assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?status='+encodeURIComponent('x'.repeat(81)),{headers:{authorization:'Bearer test-token'}}))).status,400);
 });
 
+test('commerce order ledger validates and applies a canonical status filter after ownership', async () => {
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:[],error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?canonical_status=processing',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  const call=app.calls.find(x=>x.table==='vco_order_lines');
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[4],['eq','canonical_status','processing']);
+  assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?canonical_status=unknown',{headers:{authorization:'Bearer test-token'}}))).status,400);
+});
+
 test('commerce order ledger validates and applies an inclusive UTC date range after ownership', async () => {
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
@@ -216,7 +228,7 @@ test('commerce order ledger validates and applies an inclusive UTC date range af
 });
 
 test('commerce order CSV export reuses owner filters and safely quotes UTF-8 fields', async () => {
-  const row={shop:{name:'淘宝店, "上海"',channel:'taobao'},external_order_id:'=HYPERLINK("bad")',sku:'sku\n一',quantity:2,amount_minor:1234,currency:'CNY',status:'paid',occurred_at:'2026-09-03T12:00:00.000Z'};
+  const row={shop:{name:'淘宝店, "上海"',channel:'taobao'},external_order_id:'=HYPERLINK("bad")',sku:'sku\n一',quantity:2,amount_minor:1234,currency:'CNY',canonical_status:'processing',status:'paid',occurred_at:'2026-09-03T12:00:00.000Z'};
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
     : {data:[row],error:null});
@@ -232,6 +244,8 @@ test('commerce order CSV export reuses owner filters and safely quotes UTF-8 fie
   assert.match(body,/"'=HYPERLINK\(""bad""\)"/);
   assert.match(body,/"sku\n一"/);
   assert.match(body,/"12\.34"/);
+  assert.match(body,/"canonical_status","source_status"/);
+  assert.match(body,/"processing","paid"/);
   const call=app.calls.find(x=>x.table==='vco_order_lines');
   assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
   assert.deepEqual(call.operations[4],['eq','status','paid']);
