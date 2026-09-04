@@ -174,3 +174,16 @@ test('commerce order ledger includes shop context without widening ownership', a
   assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
   assert.deepEqual(call.operations[3],['limit',200]);
 });
+
+test('commerce order ledger validates and applies an owner-scoped shop filter', async () => {
+  const shopId='123e4567-e89b-42d3-a456-426614174000';
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:[],error:null});
+  const response = await app.handler(new Request(`https://example.test/marketplace-payment-loop/api/commerce/orders?shop_id=${shopId}`,{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  const call=app.calls.find(x=>x.table==='vco_order_lines');
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[4],['eq','shop_id',shopId]);
+  assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?shop_id=not-a-uuid',{headers:{authorization:'Bearer test-token'}}))).status,400);
+});
