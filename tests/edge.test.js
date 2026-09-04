@@ -162,6 +162,20 @@ test('commerce import history is owner-scoped and bounded', async () => {
   assert.deepEqual(call.operations[3],['limit',100]);
 });
 
+test('commerce order summary is owner-scoped through one restricted RPC', async () => {
+  const rows=[{canonical_status:'processing',currency:'USD',order_count:2,unit_count:3,amount_minor:2034}];
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : call.rpc === 'vco_order_summary' ? {data:rows,error:null} : {data:null,error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/summary',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.deepEqual((await response.json()).summary,rows);
+  const call=app.calls.find(x=>x.rpc==='vco_order_summary');
+  assert.equal(call.args.p_owner,'user-id');
+  assert.deepEqual(Object.keys(call.args),['p_owner']);
+  assert.deepEqual(call.operations,[]);
+});
+
 test('commerce order ledger includes shop context without widening ownership', async () => {
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}

@@ -21,7 +21,7 @@ test('commerce UI provides persisted Chinese and English copy',()=>{
   assert.match(script,/authentication_required:'请先登录。'/);
 });
 test('commerce UI connects all operational controls to the authenticated API',()=>{
-  for(const route of ['/api/commerce/shops','/api/commerce/imports','/api/commerce/orders']) assert.match(script,new RegExp(route));
+  for(const route of ['/api/commerce/shops','/api/commerce/imports','/api/commerce/summary','/api/commerce/orders']) assert.match(script,new RegExp(route));
   assert.match(script,/authorization:'Bearer '\+token/);
   assert.match(html,/id="csvFile"/);
   assert.match(html,/id="refreshImports"/);
@@ -61,6 +61,12 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/p\.set\('format','csv'\)/);
   assert.match(script,/authorization:'Bearer '\+token/);
   assert.match(script,/a\.download='vesper-commerce-orders\.csv'/);
+  assert.match(html,/id="refreshSummary"/);
+  assert.match(script,/summary:'运营概览'/);
+  assert.match(script,/summary:'Operations summary'/);
+  assert.match(script,/不受 200 条账本上限影响/);
+  assert.match(script,/beyond the 200-row ledger limit/);
+  assert.match(script,/Number\(x\.amount_minor\)\/100/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
   assert.match(script,/file\.size>32768/);
