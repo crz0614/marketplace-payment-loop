@@ -217,6 +217,20 @@ test('cross-shop inventory summary is owner-scoped through one restricted RPC', 
   assert.deepEqual(call.operations,[]);
 });
 
+test('order-inventory exceptions are owner-scoped through one restricted RPC', async () => {
+  const rows=[{shop_id:'shop-id',shop_name:'Amazon',channel:'amazon',sku:'MISSING-1',order_line_count:2,ordered_quantity:3,last_order_at:'2026-09-04T00:00:00Z'}];
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : call.rpc === 'vco_inventory_exceptions' ? {data:rows,error:null} : {data:null,error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.deepEqual((await response.json()).exceptions,rows);
+  const call=app.calls.find(x=>x.rpc==='vco_inventory_exceptions');
+  assert.equal(call.args.p_owner,'user-id');
+  assert.deepEqual(Object.keys(call.args),['p_owner']);
+  assert.deepEqual(call.operations,[]);
+});
+
 test('commerce import history is owner-scoped and bounded', async () => {
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
