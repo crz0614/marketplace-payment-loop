@@ -214,3 +214,26 @@ test('commerce order ledger validates and applies an inclusive UTC date range af
     assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?'+query,{headers:{authorization:'Bearer test-token'}}))).status,400);
   }
 });
+
+test('commerce order CSV export reuses owner filters and safely quotes UTF-8 fields', async () => {
+  const row={shop:{name:'淘宝店, "上海"',channel:'taobao'},external_order_id:'=HYPERLINK("bad")',sku:'sku\n一',quantity:2,amount_minor:1234,currency:'CNY',status:'paid',occurred_at:'2026-09-03T12:00:00.000Z'};
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:[row],error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?status=paid&format=csv',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('content-type'),'text/csv; charset=utf-8');
+  assert.equal(response.headers.get('content-disposition'),'attachment; filename="vesper-commerce-orders.csv"');
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  const bytes=new Uint8Array(await response.clone().arrayBuffer());
+  assert.deepEqual([...bytes.slice(0,3)],[0xef,0xbb,0xbf]);
+  const body=await response.text();
+  assert.match(body,/"淘宝店, ""上海"""/);
+  assert.match(body,/"'=HYPERLINK\(""bad""\)"/);
+  assert.match(body,/"sku\n一"/);
+  assert.match(body,/"12\.34"/);
+  const call=app.calls.find(x=>x.table==='vco_order_lines');
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[4],['eq','status','paid']);
+  assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders?format=xlsx',{headers:{authorization:'Bearer test-token'}}))).status,400);
+});
