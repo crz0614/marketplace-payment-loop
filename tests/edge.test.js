@@ -148,6 +148,39 @@ test('commerce import rejects malformed money before database import', async () 
   assert.equal(app.calls.some(x=>x.rpc==='vco_import_order_lines'),false);
 });
 
+test('inventory import validates unique non-negative rows before one atomic RPC', async () => {
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : call.rpc === 'vco_upsert_inventory' ? {data:2,error:null} : {data:null,error:null});
+  const rows=[{sku:'SKU-1',available_quantity:'2',reorder_point:'3'},{sku:'SKU-2',available_quantity:8,reorder_point:2}];
+  const response = await app.request('/api/commerce/inventory',{shop_id:'123e4567-e89b-42d3-a456-426614174000',source_name:'amazon-inventory.csv',rows},{authorization:'Bearer test-token'});
+  assert.equal(response.status,201);
+  assert.deepEqual(await response.json(),{row_count:2});
+  const call=app.calls.find(x=>x.rpc==='vco_upsert_inventory');
+  assert.equal(call.args.p_owner,'user-id');
+  assert.equal(JSON.stringify(call.args.p_rows[0]),JSON.stringify({sku:'SKU-1',available_quantity:2,reorder_point:3}));
+  for(const invalid of [
+    [{sku:'SKU-1',available_quantity:-1,reorder_point:2}],
+    [{sku:'SKU-1',available_quantity:1.5,reorder_point:2}],
+    [{sku:'SKU-1',available_quantity:1,reorder_point:2},{sku:'SKU-1',available_quantity:2,reorder_point:2}],
+  ]) assert.equal((await app.request('/api/commerce/inventory',{shop_id:'123e4567-e89b-42d3-a456-426614174000',source_name:'x.csv',rows:invalid},{authorization:'Bearer test-token'})).status,400);
+});
+
+test('low-stock inventory query is owner-scoped and bounded', async () => {
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:[{sku:'SKU-1',is_low_stock:true}],error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory?shop_id=123e4567-e89b-42d3-a456-426614174000&low_stock=true',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).inventory[0].sku,'SKU-1');
+  const call=app.calls.find(x=>x.table==='vco_inventory');
+  assert.deepEqual(call.operations.map(x=>x[0]),['select','eq','order','limit','eq','eq']);
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[3],['limit',200]);
+  assert.deepEqual(call.operations[5],['eq','is_low_stock',true]);
+  assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory?low_stock=false',{headers:{authorization:'Bearer test-token'}}))).status,400);
+});
+
 test('commerce import history is owner-scoped and bounded', async () => {
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}

@@ -67,6 +67,15 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/不受 200 条账本上限影响/);
   assert.match(script,/beyond the 200-row ledger limit/);
   assert.match(script,/Number\(x\.amount_minor\)\/100/);
+  assert.match(html,/id="inventoryForm"/);
+  assert.match(html,/id="lowStockOnly" type="checkbox"/);
+  assert.match(script,/inventoryTitle:'库存与低库存预警'/);
+  assert.match(script,/inventoryTitle:'Inventory and low-stock alerts'/);
+  assert.match(script,/inventoryFields=\['sku','available_quantity','reorder_point'\]/);
+  assert.match(script,/async function inventory\(\).*?\/api\/commerce\/inventory/);
+  assert.match(script,/p\.set\('low_stock','true'\)/);
+  assert.match(script,/inventoryUpdated:'已更新 \{n\} 个 SKU。'/);
+  assert.match(script,/inventoryUpdated:'Updated \{n\} SKUs.'/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
   assert.match(script,/file\.size>32768/);

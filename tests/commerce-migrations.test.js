@@ -9,6 +9,7 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   const hardening = migration('20260903164817_commerce_ops_advisor_fixes.sql');
   const canonical = migration('20260904052000_commerce_canonical_status.sql');
   const summary = migration('20260904062000_commerce_order_summary.sql');
+  const inventory = migration('20260904075000_commerce_inventory.sql');
 
   for (const table of ['vco_shops', 'vco_imports', 'vco_order_lines']) {
     assert.match(core, new RegExp(`create table public\\.${table}`));
@@ -40,4 +41,14 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   assert.match(summary, /security invoker\s+set search_path = ''/);
   assert.match(summary, /revoke all on function public\.vco_order_summary\(uuid\) from public, anon, authenticated/);
   assert.match(summary, /grant execute on function public\.vco_order_summary\(uuid\) to service_role/);
+  assert.match(inventory, /create table public\.vco_inventory/);
+  assert.match(inventory, /is_low_stock boolean generated always as \(available_quantity <= reorder_point\) stored/);
+  assert.match(inventory, /unique \(shop_id, sku\)/);
+  assert.match(inventory, /alter table public\.vco_inventory enable row level security/);
+  assert.match(inventory, /using \(false\) with check \(false\)/);
+  assert.match(inventory, /create or replace function public\.vco_upsert_inventory/);
+  assert.match(inventory, /language plpgsql\s+security invoker\s+set search_path = ''/);
+  assert.match(inventory, /on conflict \(shop_id, sku\) do update/);
+  assert.match(inventory, /revoke all on function public\.vco_upsert_inventory[\s\S]+from public, anon, authenticated/);
+  assert.match(inventory, /grant execute on function public\.vco_upsert_inventory[\s\S]+to service_role/);
 });
