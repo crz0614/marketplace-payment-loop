@@ -99,7 +99,10 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/class="exceptionNote" maxlength="500"/);
   assert.match(script,/class="saveException"/);
   assert.match(html,/id="inventoryExceptionStatus"/);
+  assert.match(html,/id="inventoryExceptionShop"/);
+  assert.match(script,/p\.set\('shop_id',shop\)/);
   assert.match(script,/p\.set\('action_status',status\)/);
+  assert.match(script,/\$\('#inventoryExceptionShop'\)\.onchange/);
   assert.match(script,/\$\('#inventoryExceptionStatus'\)\.onchange/);
   assert.match(script,/全部处理状态/);
   assert.match(script,/All actions/);
