@@ -218,26 +218,30 @@ test('cross-shop inventory summary is owner-scoped through one restricted RPC', 
 });
 
 test('order-inventory exceptions are owner-scoped and support a validated action filter', async () => {
+  const shopId='123e4567-e89b-42d3-a456-426614174000';
   const rows=[{shop_id:'shop-id',shop_name:'Amazon',channel:'amazon',sku:'MISSING-1',order_line_count:2,ordered_quantity:3,last_order_at:'2026-09-04T00:00:00Z'}];
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
     : call.rpc === 'vco_inventory_exceptions' ? {data:rows,error:null} : {data:null,error:null});
-  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions?action_status=investigating',{headers:{authorization:'Bearer test-token'}}));
+  const response = await app.handler(new Request(`https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions?shop_id=${shopId}&action_status=investigating`,{headers:{authorization:'Bearer test-token'}}));
   assert.equal(response.status,200);
   assert.deepEqual((await response.json()).exceptions,rows);
   const call=app.calls.find(x=>x.rpc==='vco_inventory_exceptions');
   assert.equal(call.args.p_owner,'user-id');
   assert.equal(call.args.p_action_status,'investigating');
+  assert.equal(call.args.p_shop,shopId);
   assert.deepEqual(call.operations,[]);
   assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions?action_status=closed',{headers:{authorization:'Bearer test-token'}}))).status,400);
+  assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions?shop_id=wrong',{headers:{authorization:'Bearer test-token'}}))).status,400);
 });
 
 test('inventory exception CSV export keeps the action filter and neutralizes spreadsheet formulas', async () => {
+  const shopId='123e4567-e89b-42d3-a456-426614174000';
   const row={shop_name:'淘宝, "上海"',channel:'taobao',sku:'=HYPERLINK("bad")',order_line_count:2,ordered_quantity:7,action_status:'investigating',action_note:'+call supplier',last_order_at:'2026-09-04T00:00:00Z',action_updated_at:'2026-09-04T01:00:00Z'};
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
     : call.rpc === 'vco_inventory_exceptions' ? {data:[row],error:null} : {data:null,error:null});
-  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions?action_status=investigating&format=csv',{headers:{authorization:'Bearer test-token'}}));
+  const response = await app.handler(new Request(`https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions?shop_id=${shopId}&action_status=investigating&format=csv`,{headers:{authorization:'Bearer test-token'}}));
   assert.equal(response.status,200);
   assert.equal(response.headers.get('content-type'),'text/csv; charset=utf-8');
   assert.equal(response.headers.get('content-disposition'),'attachment; filename="vesper-commerce-inventory-exceptions.csv"');
@@ -252,6 +256,7 @@ test('inventory exception CSV export keeps the action filter and neutralizes spr
   const call=app.calls.find(x=>x.rpc==='vco_inventory_exceptions');
   assert.equal(call.args.p_owner,'user-id');
   assert.equal(call.args.p_action_status,'investigating');
+  assert.equal(call.args.p_shop,shopId);
   assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory-exceptions?format=xlsx',{headers:{authorization:'Bearer test-token'}}))).status,400);
 });
 
