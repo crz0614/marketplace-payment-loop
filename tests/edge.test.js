@@ -231,6 +231,22 @@ test('order-inventory exceptions are owner-scoped through one restricted RPC', a
   assert.deepEqual(call.operations,[]);
 });
 
+test('inventory exception actions are validated and owner-scoped through one restricted RPC', async () => {
+  const result=[{action_status:'investigating',action_note:'Check export',action_updated_at:'2026-09-04T00:00:00Z'}];
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : call.rpc === 'vco_set_inventory_exception_action' ? {data:result,error:null} : {data:null,error:null});
+  const input={shop_id:'123e4567-e89b-42d3-a456-426614174000',sku:'MISSING-1',status:'investigating',note:'Check export'};
+  const response=await app.request('/api/commerce/inventory-exceptions',input,{authorization:'Bearer test-token'});
+  assert.equal(response.status,200);
+  assert.deepEqual((await response.json()).action,result[0]);
+  const call=app.calls.find(x=>x.rpc==='vco_set_inventory_exception_action');
+  assert.equal(JSON.stringify(call.args),JSON.stringify({p_owner:'user-id',p_shop:input.shop_id,p_sku:input.sku,p_status:input.status,p_note:input.note}));
+  assert.deepEqual(call.operations,[]);
+  assert.equal((await app.request('/api/commerce/inventory-exceptions',{...input,status:'done'},{authorization:'Bearer test-token'})).status,400);
+  assert.equal((await app.request('/api/commerce/inventory-exceptions',{...input,note:'x'.repeat(501)},{authorization:'Bearer test-token'})).status,400);
+});
+
 test('commerce import history is owner-scoped and bounded', async () => {
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
