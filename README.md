@@ -54,17 +54,17 @@ The following list describes the local Node runtime; do not assume hosted featur
 
 ## Commerce Ops schema · 电商运营数据结构
 
-The applied Commerce Ops migrations are tracked as `20260903164749_commerce_ops_core.sql` and `20260903164817_commerce_ops_advisor_fixes.sql`. They reproduce the hosted PostgreSQL tables, seven-channel constraint, idempotent order key, atomic import function, indexes, RLS and service-role-only access. A fresh Supabase environment can therefore rebuild the order ledger from the repository instead of relying on dashboard-only SQL.
+The applied Commerce Ops migrations are tracked as `20260903164749_commerce_ops_core.sql`, `20260903164817_commerce_ops_advisor_fixes.sql` and `20260904052000_commerce_canonical_status.sql`. They reproduce the hosted PostgreSQL tables, seven-channel constraint, idempotent order key, atomic import function, indexes, RLS and service-role-only access. A fresh Supabase environment can therefore rebuild the order ledger from the repository instead of relying on dashboard-only SQL.
 
-The authenticated Commerce Ops API and bilingual console also expose the latest 100 import runs and 200 order lines for the current owner. Both retain shop and channel context; the ledger can be filtered by shop, original order status and an inclusive UTC date range, making repeated uploads, pending work and reconciliation traceable without exposing another operator's records. The same owner-scoped filters can export the current view as UTF-8 CSV; values are quoted and formula-leading fields are neutralized, while the 200-row bound remains explicit.
+The authenticated Commerce Ops API and bilingual console also expose the latest 100 import runs and 200 order lines for the current owner. Both retain shop and channel context. Every order keeps its unmodified source status and derives a stored canonical status: pending payment, processing, shipped, completed, cancelled, refunded or other. The ledger can combine shop, canonical status, original status and an inclusive UTC date range without exposing another operator's records. The same owner-scoped filters export both statuses in UTF-8 CSV; values are quoted and formula-leading fields are neutralized, while the 200-row bound remains explicit.
 
-已上线的电商运营迁移现已作为 `20260903164749_commerce_ops_core.sql` 和 `20260903164817_commerce_ops_advisor_fixes.sql` 纳入版本控制，包含三张 PostgreSQL 表、七渠道约束、订单幂等键、原子导入函数、索引、RLS 及仅限服务角色的访问边界。新 Supabase 环境可直接从仓库重建订单账本，不再依赖控制台中的未记录 SQL。运营台可沿用同一组账户隔离、店铺、状态和 UTC 日期筛选导出当前视图的 UTF-8 CSV；字段会安全引用并中和公式前缀，同时明确保留 200 条上限。
+已上线的电商运营迁移现已作为 `20260903164749_commerce_ops_core.sql`、`20260903164817_commerce_ops_advisor_fixes.sql` 和 `20260904052000_commerce_canonical_status.sql` 纳入版本控制，包含三张 PostgreSQL 表、七渠道约束、订单幂等键、原子导入函数、索引、RLS 及仅限服务角色的访问边界。新 Supabase 环境可直接从仓库重建订单账本，不再依赖控制台中的未记录 SQL。
 
-鉴权后的电商运营 API 与双语控制台还会展示当前账户最近 100 次导入记录，以及最近 200 条订单；两者都标明所属店铺与渠道，订单还可通过鉴权 API 按店铺、原始订单状态和包含首尾日期的 UTC 日期范围筛选，便于追踪重复上传、待处理订单与跨平台对账，同时不会暴露其他运营者的记录。
+鉴权后的电商运营 API 与双语控制台会展示当前账户最近 100 次导入记录和最近 200 条订单。每笔订单保留平台原始状态，同时生成待付款、待处理、已发货、已完成、已取消、退款或其他标准状态；店铺、标准状态、原始状态和 UTC 日期可组合筛选。相同的账户隔离筛选可导出同时包含两种状态的 UTF-8 CSV，字段会安全引用并中和公式前缀。
 
-Rollback is non-destructive: deploy the previous Edge Function, which does not call Commerce Ops routes, and leave the tables intact. Drop the function and tables only after an export and a verified zero-row check; dropping a shop cascades to its imports and order lines.
+Rollback is non-destructive: deploy the previous Edge Function and leave the tables intact. To remove canonical statuses, first deploy the previous function, then drop the canonical-status index, constraint and generated column; the source `status` values remain intact. Drop the import function and tables only after an export and a verified zero-row check; dropping a shop cascades to its imports and order lines.
 
-回滚默认不删除数据：先恢复上一版 Edge Function，使其不再调用电商运营接口，同时保留表。只有完成导出并确认三张表均无业务记录后才能删除函数与表；删除店铺会级联删除对应导入记录和订单行。
+回滚默认不删除数据：先恢复上一版 Edge Function，再依次删除标准状态索引、约束和生成列，平台原始 `status` 不受影响。只有完成导出并确认三张表均无业务记录后才能删除导入函数与表；删除店铺会级联删除对应导入记录和订单行。
 
 Forward Stripe test events with:
 
