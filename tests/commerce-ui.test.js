@@ -82,6 +82,11 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/async function inventorySummary\(\).*?\/api\/commerce\/inventory-summary/);
   assert.match(script,/x\.low_stock_shop_count/);
   assert.match(script,/x\.shop_count/);
+  assert.match(html,/id="exportLowStock"/);
+  assert.match(script,/exportLowStock:'导出低库存 CSV'/);
+  assert.match(script,/exportLowStock:'Export low-stock CSV'/);
+  assert.match(script,/p\.set\('low_stock','true'\);p\.set\('format','csv'\)/);
+  assert.match(script,/a\.download='vesper-commerce-low-stock\.csv'/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
   assert.match(script,/file\.size>32768/);

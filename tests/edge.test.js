@@ -181,6 +181,28 @@ test('low-stock inventory query is owner-scoped and bounded', async () => {
   assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory?low_stock=false',{headers:{authorization:'Bearer test-token'}}))).status,400);
 });
 
+test('low-stock CSV export keeps inventory filters and neutralizes spreadsheet formulas', async () => {
+  const rows=[{shop:{name:'=Shop',channel:'amazon'},sku:'+SKU-1',available_quantity:2,reorder_point:3,source_name:'@inventory.csv',captured_at:'2026-09-04T00:00:00Z'}];
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:rows,error:null});
+  const url='https://example.test/marketplace-payment-loop/api/commerce/inventory?shop_id=123e4567-e89b-42d3-a456-426614174000&low_stock=true&format=csv';
+  const response = await app.handler(new Request(url,{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('content-type'),'text/csv; charset=utf-8');
+  assert.equal(response.headers.get('content-disposition'),'attachment; filename="vesper-commerce-low-stock.csv"');
+  const bytes=new Uint8Array(await response.clone().arrayBuffer());
+  assert.deepEqual([...bytes.slice(0,3)],[0xef,0xbb,0xbf]);
+  const csv=await response.text();
+  assert.match(csv,/"'=Shop","amazon","'\+SKU-1","2","3","'@inventory\.csv"/);
+  const call=app.calls.find(x=>x.table==='vco_inventory');
+  assert.deepEqual(call.operations.map(x=>x[0]),['select','eq','order','limit','eq','eq']);
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[3],['limit',200]);
+  assert.deepEqual(call.operations[5],['eq','is_low_stock',true]);
+  assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory?format=xlsx',{headers:{authorization:'Bearer test-token'}}))).status,400);
+});
+
 test('cross-shop inventory summary is owner-scoped through one restricted RPC', async () => {
   const rows=[{sku:'SHARED-1',shop_count:2,low_stock_shop_count:1,available_quantity:10,reorder_point:8}];
   const app = setup(call => call.table === 'mpl_sessions'
