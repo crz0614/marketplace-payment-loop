@@ -161,3 +161,16 @@ test('commerce import history is owner-scoped and bounded', async () => {
   assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
   assert.deepEqual(call.operations[3],['limit',100]);
 });
+
+test('commerce order ledger includes shop context without widening ownership', async () => {
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : {data:[{id:'order-id',shop:{name:'Amazon US',channel:'amazon'}}],error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/orders',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).orders[0].shop.channel,'amazon');
+  const call=app.calls.find(x=>x.table==='vco_order_lines');
+  assert.equal(call.operations[0][1],'id,shop_id,external_order_id,sku,quantity,amount_minor,currency,status,occurred_at,updated_at,shop:vco_shops(name,channel)');
+  assert.deepEqual(call.operations[1],['eq','owner_id','user-id']);
+  assert.deepEqual(call.operations[3],['limit',200]);
+});
