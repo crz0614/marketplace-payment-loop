@@ -93,6 +93,12 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/async function inventoryExceptions\(\).*?\/api\/commerce\/inventory-exceptions/);
   assert.match(script,/x\.order_line_count/);
   assert.match(script,/x\.ordered_quantity/);
+  assert.match(script,/exceptionStates=\['open','investigating','ignored'\]/);
+  assert.match(script,/open:'待处理',investigating:'调查中',ignored:'已忽略'/);
+  assert.match(script,/open:'Open',investigating:'Investigating',ignored:'Ignored'/);
+  assert.match(script,/class="exceptionNote" maxlength="500"/);
+  assert.match(script,/class="saveException"/);
+  assert.match(script,/method:'POST'.*?status:row\.querySelector\('\.exceptionStatus'\)\.value.*?note:row\.querySelector\('\.exceptionNote'\)\.value/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
   assert.match(script,/file\.size>32768/);

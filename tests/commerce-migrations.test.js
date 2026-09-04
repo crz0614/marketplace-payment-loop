@@ -12,6 +12,8 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   const inventory = migration('20260904075000_commerce_inventory.sql');
   const inventorySummary = migration('20260904081500_commerce_inventory_summary.sql');
   const inventoryExceptions = migration('20260904101000_commerce_inventory_exceptions.sql');
+  const inventoryExceptionActions = migration('20260904113000_commerce_inventory_exception_actions.sql');
+  const inventoryExceptionActionIndex = migration('20260904114500_commerce_inventory_exception_action_index.sql');
 
   for (const table of ['vco_shops', 'vco_imports', 'vco_order_lines']) {
     assert.match(core, new RegExp(`create table public\\.${table}`));
@@ -70,4 +72,18 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   assert.match(inventoryExceptions, /security invoker\s+set search_path = ''/);
   assert.match(inventoryExceptions, /revoke all on function public\.vco_inventory_exceptions\(uuid\) from public, anon, authenticated/);
   assert.match(inventoryExceptions, /grant execute on function public\.vco_inventory_exceptions\(uuid\) to service_role/);
+  assert.match(inventoryExceptionActions, /create table public\.vco_inventory_exception_actions/);
+  assert.match(inventoryExceptionActions, /unique \(owner_id, shop_id, sku\)/);
+  assert.match(inventoryExceptionActions, /status in \('investigating', 'ignored'\)/);
+  assert.match(inventoryExceptionActions, /alter table public\.vco_inventory_exception_actions enable row level security/);
+  assert.match(inventoryExceptionActions, /using \(false\) with check \(false\)/);
+  assert.match(inventoryExceptionActions, /create or replace function public\.vco_set_inventory_exception_action/);
+  assert.match(inventoryExceptionActions, /if not exists \([\s\S]+inventory\.id is null/);
+  assert.match(inventoryExceptionActions, /on conflict \(owner_id, shop_id, sku\) do update/);
+  assert.match(inventoryExceptionActions, /left join public\.vco_inventory_exception_actions as actions/);
+  assert.match(inventoryExceptionActions, /coalesce\(actions\.status, 'open'\)/);
+  assert.match(inventoryExceptionActions, /security invoker\s+set search_path = ''/);
+  assert.match(inventoryExceptionActions, /revoke all on function public\.vco_set_inventory_exception_action[\s\S]+from public, anon, authenticated/);
+  assert.match(inventoryExceptionActions, /grant execute on function public\.vco_set_inventory_exception_action[\s\S]+to service_role/);
+  assert.match(inventoryExceptionActionIndex, /create index vco_inventory_exception_actions_shop_id_idx\s+on public\.vco_inventory_exception_actions\(shop_id\)/i);
 });
