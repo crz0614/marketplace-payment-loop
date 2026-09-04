@@ -103,6 +103,11 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/\$\('#inventoryExceptionStatus'\)\.onchange/);
   assert.match(script,/全部处理状态/);
   assert.match(script,/All actions/);
+  assert.match(html,/id="exportInventoryExceptions"/);
+  assert.match(script,/exportInventoryExceptions:'导出异常 CSV'/);
+  assert.match(script,/exportInventoryExceptions:'Export exceptions CSV'/);
+  assert.match(script,/a\.download='vesper-commerce-inventory-exceptions\.csv'/);
+  assert.match(script,/status\)p\.set\('action_status',status\);p\.set\('format','csv'\)/);
   assert.match(script,/method:'POST'.*?status:row\.querySelector\('\.exceptionStatus'\)\.value.*?note:row\.querySelector\('\.exceptionNote'\)\.value/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
