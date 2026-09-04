@@ -46,6 +46,12 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/from:'From'/);
   assert.match(script,/p\.set\('from',from\)/);
   assert.match(script,/p\.set\('to',to\)/);
+  assert.match(html,/id="exportOrders"/);
+  assert.match(script,/export:'导出 CSV'/);
+  assert.match(script,/export:'Export CSV'/);
+  assert.match(script,/p\.set\('format','csv'\)/);
+  assert.match(script,/authorization:'Bearer '\+token/);
+  assert.match(script,/a\.download='vesper-commerce-orders\.csv'/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
   assert.match(script,/file\.size>32768/);
