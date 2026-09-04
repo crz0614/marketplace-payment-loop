@@ -14,6 +14,7 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   const inventoryExceptions = migration('20260904101000_commerce_inventory_exceptions.sql');
   const inventoryExceptionActions = migration('20260904113000_commerce_inventory_exception_actions.sql');
   const inventoryExceptionActionIndex = migration('20260904114500_commerce_inventory_exception_action_index.sql');
+  const inventoryExceptionFilter = migration('20260904141500_commerce_inventory_exception_filter.sql');
 
   for (const table of ['vco_shops', 'vco_imports', 'vco_order_lines']) {
     assert.match(core, new RegExp(`create table public\\.${table}`));
@@ -86,4 +87,9 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   assert.match(inventoryExceptionActions, /revoke all on function public\.vco_set_inventory_exception_action[\s\S]+from public, anon, authenticated/);
   assert.match(inventoryExceptionActions, /grant execute on function public\.vco_set_inventory_exception_action[\s\S]+to service_role/);
   assert.match(inventoryExceptionActionIndex, /create index vco_inventory_exception_actions_shop_id_idx\s+on public\.vco_inventory_exception_actions\(shop_id\)/i);
+  assert.match(inventoryExceptionFilter, /create function public\.vco_inventory_exceptions\(\s*p_owner uuid,\s*p_action_status text default null/);
+  assert.match(inventoryExceptionFilter, /coalesce\(actions\.status, 'open'\) = p_action_status/);
+  assert.match(inventoryExceptionFilter, /security invoker\s+set search_path = ''/);
+  assert.match(inventoryExceptionFilter, /revoke all on function public\.vco_inventory_exceptions\(uuid,text\)/);
+  assert.match(inventoryExceptionFilter, /grant execute on function public\.vco_inventory_exceptions\(uuid,text\)\s+to service_role/);
 });
