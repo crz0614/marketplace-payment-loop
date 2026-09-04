@@ -35,7 +35,11 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(html,/id="orderShop"/);
   assert.match(script,/allShops:'全部店铺'/);
   assert.match(script,/allShops:'All shops'/);
-  assert.match(script,/shop_id='\+encodeURIComponent\(shop\)/);
+  assert.match(script,/p\.set\('shop_id',shop\)/);
+  assert.match(html,/id="orderStatus"/);
+  assert.match(script,/allStatuses:'全部状态'/);
+  assert.match(script,/allStatuses:'All statuses'/);
+  assert.match(script,/p\.set\('status',status\)/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
   assert.match(script,/file\.size>32768/);
