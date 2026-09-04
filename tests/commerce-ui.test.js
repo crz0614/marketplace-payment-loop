@@ -32,6 +32,10 @@ test('commerce UI connects all operational controls to the authenticated API',()
   assert.match(script,/shop:'Shop'/);
   assert.match(script,/x\.shop\.name/);
   assert.match(script,/async function orders\(\).*?x\.shop\?esc\(x\.shop\.name\)/);
+  assert.match(html,/id="orderShop"/);
+  assert.match(script,/allShops:'全部店铺'/);
+  assert.match(script,/allShops:'All shops'/);
+  assert.match(script,/shop_id='\+encodeURIComponent\(shop\)/);
 });
 test('commerce UI rejects unsafe import sizes and duplicate field mappings before the API call',()=>{
   assert.match(script,/file\.size>32768/);
