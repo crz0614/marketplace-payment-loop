@@ -181,6 +181,20 @@ test('low-stock inventory query is owner-scoped and bounded', async () => {
   assert.equal((await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory?low_stock=false',{headers:{authorization:'Bearer test-token'}}))).status,400);
 });
 
+test('cross-shop inventory summary is owner-scoped through one restricted RPC', async () => {
+  const rows=[{sku:'SHARED-1',shop_count:2,low_stock_shop_count:1,available_quantity:10,reorder_point:8}];
+  const app = setup(call => call.table === 'mpl_sessions'
+    ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}
+    : call.rpc === 'vco_inventory_summary' ? {data:rows,error:null} : {data:null,error:null});
+  const response = await app.handler(new Request('https://example.test/marketplace-payment-loop/api/commerce/inventory-summary',{headers:{authorization:'Bearer test-token'}}));
+  assert.equal(response.status,200);
+  assert.deepEqual((await response.json()).summary,rows);
+  const call=app.calls.find(x=>x.rpc==='vco_inventory_summary');
+  assert.equal(call.args.p_owner,'user-id');
+  assert.deepEqual(Object.keys(call.args),['p_owner']);
+  assert.deepEqual(call.operations,[]);
+});
+
 test('commerce import history is owner-scoped and bounded', async () => {
   const app = setup(call => call.table === 'mpl_sessions'
     ? {data:{mpl_users:{id:'user-id',role:'member'}},error:null}

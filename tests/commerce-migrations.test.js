@@ -10,6 +10,7 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   const canonical = migration('20260904052000_commerce_canonical_status.sql');
   const summary = migration('20260904062000_commerce_order_summary.sql');
   const inventory = migration('20260904075000_commerce_inventory.sql');
+  const inventorySummary = migration('20260904081500_commerce_inventory_summary.sql');
 
   for (const table of ['vco_shops', 'vco_imports', 'vco_order_lines']) {
     assert.match(core, new RegExp(`create table public\\.${table}`));
@@ -51,4 +52,12 @@ test('tracked Commerce Ops migrations reproduce the deployed security boundary',
   assert.match(inventory, /on conflict \(shop_id, sku\) do update/);
   assert.match(inventory, /revoke all on function public\.vco_upsert_inventory[\s\S]+from public, anon, authenticated/);
   assert.match(inventory, /grant execute on function public\.vco_upsert_inventory[\s\S]+to service_role/);
+  assert.match(inventorySummary, /create or replace function public\.vco_inventory_summary\(p_owner uuid\)/);
+  assert.match(inventorySummary, /where inventory\.owner_id = p_owner/);
+  assert.match(inventorySummary, /count\(\*\) filter \(where inventory\.is_low_stock\)/);
+  assert.match(inventorySummary, /group by inventory\.sku/);
+  assert.match(inventorySummary, /limit 200/);
+  assert.match(inventorySummary, /security invoker\s+set search_path = ''/);
+  assert.match(inventorySummary, /revoke all on function public\.vco_inventory_summary\(uuid\) from public, anon, authenticated/);
+  assert.match(inventorySummary, /grant execute on function public\.vco_inventory_summary\(uuid\) to service_role/);
 });
